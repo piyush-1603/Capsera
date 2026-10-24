@@ -1,0 +1,125 @@
+# CAPSERA — Technical Decisions Log
+
+> This document records agreed technical decisions and pending items. All four team members must agree before changing a recorded decision.
+
+---
+
+## Recorded Decisions
+
+### DR-001: Product Naming
+- **Decision:** The product is named **CAPSERA**. The repository is `capsera`. The database is `capsera_db`.
+- **Rationale:** Consistent naming avoids confusion with the SIH problem statement name "Capacity Connect."
+
+### DR-002: Technology Stack
+- **Decision:** React + Vite (JavaScript, no TypeScript) for frontend; Node.js + Express for backend; MySQL 8+ with `mysql2/promise` and parameterized queries for database access.
+- **Rationale:** PRD section 9.1. Team agreed on this stack at project inception.
+
+### DR-003: API Conventions
+- **Decision:** All API endpoints use the `/api/v1` prefix. JSON request/response with `camelCase` field names. Standard response envelope: `{ success, data }` or `{ success, error: { code, message } }`.
+- **Rationale:** PRD section 11.
+
+### DR-004: Naming Conventions
+- **Decision:**
+  - JavaScript: `camelCase` for variables/functions.
+  - React components: `PascalCase`.
+  - SQL: `snake_case` with plural table names.
+  - JSON: `camelCase`.
+  - Environment variables: `UPPER_SNAKE_CASE`.
+  - Enum/status values: uppercase strings.
+- **Rationale:** PRD section 10.2.
+
+### DR-005: Roles and Statuses
+- **Decision:**
+  - Roles: `TRAINEE`, `TRAINER`, `ADMIN`
+  - User statuses: `PENDING`, `ACTIVE`, `REJECTED`, `SUSPENDED`
+  - Course statuses: `DRAFT`, `PUBLISHED`, `ARCHIVED`
+  - Assessment statuses: `DRAFT`, `PUBLISHED`, `CLOSED`
+  - Enrollment statuses: `ACTIVE`, `COMPLETED`, `CANCELLED`
+  - Attempt statuses: `IN_PROGRESS`, `SUBMITTED`, `GRADED`, `EXPIRED`
+  - Resource types: `VIDEO`, `PRESENTATION`, `DOCUMENT`, `LINK`, `OTHER`
+- **Rationale:** PRD section 10.3.
+
+### DR-006: Module Ownership
+- **Decision:**
+  - Member 1: Authentication, profiles, account approval, role management.
+  - Member 2: Courses, lessons, learning resources, enrollments, learning progress.
+  - Member 3: Assessments, MCQ questions, attempts, scoring, results, course feedback.
+  - Member 4: Skills, competency matching, certificates, announcements, admin dashboard.
+- **Rationale:** PRD section 13.
+
+### DR-007: Git Workflow
+- **Decision:** `main` branch is stable. Feature branches per member. Changes merged via reviewed pull requests. Shared contracts (API, DB schema, env vars) require coordination.
+- **Rationale:** Four parallel contributors need clear integration rules.
+
+### DR-008: Frontend HTTP Client
+- **Decision:** Axios for API calls, configured with a shared service utility.
+- **Rationale:** PRD section 9.1 requires team to standardize on one client. Axios chosen for interceptor support and cleaner error handling.
+
+### DR-009: Validation Library
+- **Decision:** Pending — team will evaluate lightweight schema validation (e.g. Zod or Joi) versus modular express middleware.
+- **Status:** ⚠️ **Needs team consensus before feature controller implementation.**
+
+### DR-010: Testing Libraries
+- **Decision:** Vitest + Supertest for backend API tests. Frontend testing library TBD.
+- **Status:** Backend testing verified. Frontend test runner pending.
+
+### DR-011: Authentication Mechanism
+- **Decision:** Pending proposal from Member 1. Recommended baseline: Stateless JWT Bearer tokens in `Authorization` header for REST clients, with password hashing via Bcrypt/Argon2.
+- **Status:** ⚠️ **Member 1 to present final auth design before login/signup implementation.**
+
+### DR-012: File Upload Storage
+- **Decision:** Local disk storage (`uploads/` directory with static serving) for development. Cloud storage provider (AWS S3, Cloudflare R2, or Cloudinary) for production deployment.
+- **Status:** ⚠️ **Member 2 to finalize upload middleware.**
+
+### DR-013: Certificate Status Model
+- **Decision:** Use timestamp pair `issued_at` (mandatory) and `revoked_at` (nullable `TIMESTAMP`, default `NULL`). A certificate is considered valid if `revoked_at IS NULL`.
+- **Rationale:** Avoids redundant status columns and accurately records historical verification events.
+
+### DR-014: Admin Account Bootstrapping
+- **Decision:** Never hardcode credentials or automatically insert an admin user in shared migration files. The initial administrator account will be provisioned via a dedicated secure CLI seed script (`npm run seed:admin`) that reads temporary credentials from environment variables (`ADMIN_EMAIL`, `ADMIN_PASSWORD`).
+- **Rationale:** Security requirement 10. Prevents public repository exposure of default administrator passwords.
+
+### DR-015: Assessment Modification Rules After Attempts Begin
+- **Decision:** Once an assessment is in `PUBLISHED` status and contains at least one `assessment_attempt`, structural changes that compromise grading integrity are locked:
+  - Adding or deleting questions is forbidden.
+  - Modifying `correct_option` or `points` on existing questions is forbidden.
+  - Modifying `pass_threshold` is forbidden.
+  - Non-scoring edits (typo fixes in `question_text`, `option_*`, or `explanation`) are permitted.
+  - If a trainer needs substantial changes, they must clone the assessment into a new version or create a new assessment.
+- **Rationale:** Prevents recalculation anomalies, race conditions, and retroactive invalidation of earned scores.
+
+### DR-016: Audit Log Retention and Immutability
+- **Decision:** The `audit_logs` table is strictly append-only.
+  - No `UPDATE` or `DELETE` endpoints will be implemented for audit records.
+  - Sensitive data (passwords, plain tokens, credit credentials, or secret keys) must never be passed in the `metadata JSON` field.
+  - Retention for development/hackathon demo is indefinite. In production, a retention policy of 180 days will be maintained with periodic archival.
+- **Rationale:** Guarantees tamper-evident traceability for compliance, account approval, and certificate revocations.
+
+### DR-017: Account Deletion and Privacy Policy (Hard Deletes vs. Soft Deletes)
+- **Decision:** No `deleted_at` or soft-delete columns are introduced in the baseline schema.
+  - Hard cascading deletion is applied to user personal profiles (`trainee_profiles`, `trainer_profiles`, `trainee_skills`, `trainer_skills`, `enrollments`).
+  - Educational records with external legal or academic value (`courses` with active enrollments/certificates, `certificates`) use `ON DELETE RESTRICT` or retain anonymized audit records (`actor_id = NULL` via `ON DELETE SET NULL`).
+  - Account deletion requests require explicit validation that courses or certificates are re-assigned or archived first.
+- **Rationale:** Simplicity for MVP while complying with privacy and educational record integrity.
+
+### DR-018: Relational Integrity & Composite Foreign Keys
+- **Decision:** Use MySQL 8.0.16+ InnoDB composite foreign keys to prevent orphan relationships:
+  - `lesson_progress(enrollment_id, course_id)` references `enrollments(id, course_id)`, and `(lesson_id, course_id)` references `lessons(id, course_id)`.
+  - `attempt_answers(attempt_id, assessment_id)` references `assessment_attempts(id, assessment_id)`, and `(question_id, assessment_id)` references `questions(id, assessment_id)`.
+- **Rationale:** Prevents submitting answers to questions belonging to a different quiz, or completing lessons from an unrelated course, directly at the database engine level.
+
+---
+
+## Summary of Decisions & Pending Items
+
+| ID | Topic | Owner | Status | Notes |
+|---|---|---|---|---|
+| **DR-009** | Validation library (Zod vs Joi vs custom) | All | ⚠️ Pending | Review before controller implementation |
+| **DR-011** | Authentication strategy (JWT Bearer vs Sessions) | Member 1 | ⚠️ Pending | Proposal due before auth endpoints |
+| **DR-012** | File upload storage provider | Member 2 | ⚠️ Pending | Local disk for dev, cloud for prod |
+| **DR-013** | Certificate status model | Member 4 | ✅ Resolved | `issued_at` / `revoked_at IS NULL` |
+| **DR-014** | Admin bootstrap strategy | Member 1 | ✅ Resolved | CLI seed via env vars; no credentials in SQL |
+| **DR-015** | Assessment editing rules after attempts | Member 3 | ✅ Resolved | Lock scoring fields once attempts exist |
+| **DR-016** | Audit log retention & immutability | Member 4 / All | ✅ Resolved | Append-only, zero secrets in metadata |
+| **DR-017** | Account deletion & privacy policy | All | ✅ Resolved | No soft deletes; strict ON DELETE rules |
+| **DR-018** | Schema types & composite FK integrity | Lead / All | ✅ Resolved | MySQL 8.0.16+ InnoDB composite foreign keys |

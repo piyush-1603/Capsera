@@ -1,73 +1,77 @@
 # CAPSERA Database Guide
 
-This directory contains the database initialization script, schema migrations, and seed data definitions for the **CAPSERA** platform.
+This directory contains the database initialization instructions, ordered PostgreSQL schema migrations, migration runner, and seed definitions for the **CAPSERA** platform.
 
 ---
 
-## Prerequisites
+## Development Database Target
 
-- **MySQL Server:** Version 8.0.16 or higher (InnoDB engine, UTF-8 `utf8mb4_unicode_ci` collation).
-- **Client Tool:** `mysql` CLI client or GUI client (e.g., MySQL Workbench, DBeaver).
+- **Database Engine:** PostgreSQL 18.6+ (Postgres.app / local daemon / cloud PostgreSQL)
+- **Node.js Driver:** `pg` (node-postgres with connection pooling via `pg.Pool`)
+- **Collation & Encoding:** UTF-8 (`TIMESTAMPTZ` UTC storage)
+- **Database Name:** `capsera_db`
 
 ---
 
-## Setup & Migration Workflow
+## Prerequisites & Setup
 
-To set up the database locally, execute the setup script followed by the migrations in exact numeric order:
+### 1. Start PostgreSQL
+Ensure your local PostgreSQL service is running (e.g. click "Start" on **Postgres.app** or start your system daemon).
 
-### Step 1: Create Database
-
-Run [`001_initial_setup.sql`](001_initial_setup.sql) to create `capsera_db` if it does not already exist:
-
+### 2. Create Database
+If `capsera_db` does not exist:
 ```bash
-mysql -u root -p < database/001_initial_setup.sql
+# macOS with Postgres.app:
+createdb capsera_db
+
+# Or via psql:
+psql -U postgres -c "CREATE DATABASE capsera_db;"
 ```
 
-### Step 2: Apply Schema Migrations in Order
-
-Apply each numbered migration file in [`database/migrations/`](migrations/):
-
-```bash
-# 1. Identity, User Profiles & Skills (users, trainee_profiles, trainer_profiles, skills, trainee_skills, trainer_skills)
-mysql -u root -p capsera_db < database/migrations/001_identity_and_skills.sql
-
-# 2. Courses, Lessons, Resources, Enrollments & Progress (courses, lessons, learning_resources, enrollments, lesson_progress)
-mysql -u root -p capsera_db < database/migrations/002_courses_and_learning.sql
-
-# 3. Assessments, Questions, Attempts, Answers & Feedback (assessments, questions, assessment_attempts, attempt_answers, feedback)
-mysql -u root -p capsera_db < database/migrations/003_assessments_and_feedback.sql
-
-# 4. Certificates, Announcements & Audit Logs (certificates, announcements, audit_logs)
-mysql -u root -p capsera_db < database/migrations/004_certificates_and_announcements.sql
+### 3. Configure Local Credentials
+Ensure `server/.env` contains your PostgreSQL connection details:
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=piyush       # or 'postgres'
+DB_PASSWORD=         # blank for default Postgres.app
+DB_NAME=capsera_db
+DB_SSL=false
 ```
 
-Or apply all migrations in a single command on Linux/macOS:
+---
+
+## Running Migrations
+
+CAPSERA uses an automated, transactional migration runner (`database/migrate.js`) backed by the `schema_migrations` tracking table:
 
 ```bash
-for file in database/migrations/*.sql; do
-  echo "Applying $file..."
-  mysql -u root -p capsera_db < "$file"
-done
+# Run all pending migrations
+npm run db:migrate
+
+# Check status of applied and pending migrations
+npm run db:status
 ```
+
+*From the `server/` subdirectory, you can also run `npm run db:migrate`.*
 
 ---
 
 ## Migration Table Reference
 
+The 19 planned tables are partitioned into 4 transactional migrations:
+
 | Migration | File | Tables Created | Key Integrity Rules |
 |---|---|---|---|
-| **001** | [`001_identity_and_skills.sql`](migrations/001_identity_and_skills.sql) | `users`, `trainee_profiles`, `trainer_profiles`, `skills`, `trainee_skills`, `trainer_skills` | Unique email, unique skill names, 1:1 user-to-profile, composite uniqueness on user-skills |
+| **001** | [`001_identity_and_skills.sql`](migrations/001_identity_and_skills.sql) | `users`, `trainee_profiles`, `trainer_profiles`, `skills`, `trainee_skills`, `trainer_skills` | Unique email, 1:1 user-to-profile, composite uniqueness on user-skills, automatic `updated_at` triggers |
 | **002** | [`002_courses_and_learning.sql`](migrations/002_courses_and_learning.sql) | `courses`, `lessons`, `learning_resources`, `enrollments`, `lesson_progress` | Unique `(trainee_id, course_id)` enrollment, composite FK ensuring lesson progress belongs strictly to enrolled course |
 | **003** | [`003_assessments_and_feedback.sql`](migrations/003_assessments_and_feedback.sql) | `assessments`, `questions`, `assessment_attempts`, `attempt_answers`, `feedback` | Check constraints on score/rating/options, composite FK ensuring attempt answers belong strictly to the attempt's assessment |
-| **004** | [`004_certificates_and_announcements.sql`](migrations/004_certificates_and_announcements.sql) | `certificates`, `announcements`, `audit_logs` | Unique verification code, one certificate per trainee per course, JSON audit metadata (zero credentials logged) |
+| **004** | [`004_certificates_and_announcements.sql`](migrations/004_certificates_and_announcements.sql) | `certificates`, `announcements`, `audit_logs` | Unique verification code, one certificate per trainee per course, JSONB audit metadata with GIN index (zero credentials logged) |
 
 ---
 
-## Rollback Guidelines
+## Migration Safety & Idempotency
 
-Each migration file includes a rollback summary comment. In development, rollbacks drop child tables prior to parent tables:
-
-- **004 Rollback:** `audit_logs` → `announcements` → `certificates`
-- **003 Rollback:** `feedback` → `attempt_answers` → `assessment_attempts` → `questions` → `assessments`
-- **002 Rollback:** `lesson_progress` → `enrollments` → `learning_resources` → `lessons` → `courses`
-- **001 Rollback:** `trainer_skills` → `trainee_skills` → `skills` → `trainer_profiles` → `trainee_profiles` → `users`
+- Every migration runs within a PostgreSQL transaction (`BEGIN ... COMMIT`).
+- Already applied migrations recorded in `schema_migrations` are safely skipped.
+- If a migration encounters an error, the transaction rolls back cleanly without leaving partial tables.

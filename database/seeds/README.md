@@ -19,5 +19,5 @@ This directory contains seed data for development and demo purposes.
 ## Running Seeds
 
 ```bash
-mysql -u root -p capsera_db < database/seeds/001_admin_user.sql
+psql -h localhost -U postgres -d capsera_db -f database/seeds/001_admin_user.sql
 ```

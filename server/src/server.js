@@ -12,7 +12,7 @@ const start = async () => {
   } else {
     console.warn('⚠️  Database connection failed:', dbStatus.error);
     console.warn('   The server will start, but database-dependent routes will not work.');
-    console.warn('   Ensure MySQL is running and .env is configured correctly.\n');
+    console.warn('   Ensure PostgreSQL is running and .env is configured correctly.\n');
   }
 
   app.listen(config.port, () => {

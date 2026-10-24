@@ -82,7 +82,7 @@ function HomePage() {
               <strong>Database:</strong>{' '}
               {health.database?.connected
                 ? '✅ Connected'
-                : `⚠️ Not connected — ${health.database?.error || 'Check MySQL configuration'}`}
+                : `⚠️ Not connected — ${health.database?.error || 'Check PostgreSQL configuration'}`}
             </p>
             <p className="status-timestamp">
               Last checked: {new Date(health.timestamp).toLocaleString()}

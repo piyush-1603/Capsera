@@ -25,8 +25,8 @@ const config = {
 
   db: {
     host: optional('DB_HOST', 'localhost'),
-    port: parseInt(optional('DB_PORT', '3306'), 10),
-    user: optional('DB_USER', 'root'),
+    port: parseInt(optional('DB_PORT', '5432'), 10),
+    user: optional('DB_USER', 'postgres'),
     password: optional('DB_PASSWORD', ''),
     name: optional('DB_NAME', 'capsera_db'),
   },

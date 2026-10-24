@@ -16,8 +16,8 @@ CAPSERA is a responsive web portal for organizational capacity building, built a
 | Routing | React Router |
 | HTTP Client | Axios |
 | Backend | Node.js + Express |
-| Database | MySQL 8+ (InnoDB) |
-| DB Driver | `mysql2/promise` (parameterized queries) |
+| Database | PostgreSQL 18.6+ |
+| DB Driver | `pg` (node-postgres connection pooling) |
 | Testing | Vitest + Supertest |
 | Linting | ESLint (flat config) |
 
@@ -27,7 +27,7 @@ CAPSERA is a responsive web portal for organizational capacity building, built a
 
 - **Node.js** ≥ 18 (v22 recommended — see `.nvmrc`)
 - **npm** ≥ 9
-- **MySQL** 8.0+
+- **PostgreSQL** 18.6+ (Postgres.app, local daemon, or cloud Postgres)
 
 ```bash
 # If using nvm
@@ -64,7 +64,7 @@ npm install --prefix server
 ```bash
 # Server
 cp server/.env.example server/.env
-# Edit server/.env with your MySQL credentials
+# Edit server/.env with your PostgreSQL credentials
 
 # Client
 cp client/.env.example client/.env
@@ -77,11 +77,12 @@ cp client/.env.example client/.env
 |---|---|---|
 | `PORT` | Server port | `5000` |
 | `NODE_ENV` | Environment | `development` |
-| `DB_HOST` | MySQL host | `localhost` |
-| `DB_PORT` | MySQL port | `3306` |
-| `DB_USER` | MySQL user | `root` |
-| `DB_PASSWORD` | MySQL password | *(none)* |
+| `DB_HOST` | PostgreSQL host | `localhost` |
+| `DB_PORT` | PostgreSQL port | `5432` |
+| `DB_USER` | PostgreSQL user | `postgres` |
+| `DB_PASSWORD` | PostgreSQL password | *(none / empty)* |
 | `DB_NAME` | Database name | `capsera_db` |
+| `DB_SSL` | Enable SSL (for cloud DBs) | `false` |
 | `CORS_ORIGIN` | Allowed frontend origin | `http://localhost:5173` |
 
 **Client environment variables:**
@@ -90,28 +91,20 @@ cp client/.env.example client/.env
 |---|---|---|
 | `VITE_API_BASE_URL` | Backend API URL | `http://localhost:5000/api/v1` |
 
-### 4. Create the MySQL database
+### 4. Create the database & apply migrations
 
 ```bash
-# 1. Create database
-mysql -u root -p < database/001_initial_setup.sql
+# 1. Create database if it does not already exist
+createdb capsera_db
 
-# 2. Apply ordered migrations
-mysql -u root -p capsera_db < database/migrations/001_identity_and_skills.sql
-mysql -u root -p capsera_db < database/migrations/002_courses_and_learning.sql
-mysql -u root -p capsera_db < database/migrations/003_assessments_and_feedback.sql
-mysql -u root -p capsera_db < database/migrations/004_certificates_and_announcements.sql
+# 2. Run transactional schema migrations
+npm run db:migrate
+
+# 3. (Optional) Check migration status
+npm run db:status
 ```
 
-Or manually:
-
-```sql
-CREATE DATABASE IF NOT EXISTS capsera_db
-  CHARACTER SET utf8mb4
-  COLLATE utf8mb4_unicode_ci;
-```
-
-> **Note:** The server starts without a database connection. Database-dependent features will fail clearly with an error message. The health endpoint reports database connectivity status.
+> **Note:** The server starts even without an active database connection. Database-dependent features will fail clearly with an error message. The health endpoint reports live database connectivity status.
 
 ### 5. Start the application
 
@@ -146,7 +139,7 @@ Expected response:
 }
 ```
 
-If MySQL is not running, `database.connected` will be `false` with an error message.
+If PostgreSQL is not running, `database.connected` will be `false` with an error message.
 
 ---
 
@@ -158,6 +151,8 @@ If MySQL is not running, `database.connected` will be `false` with an error mess
 | `npm run dev:client` | Start frontend dev server (Vite) |
 | `npm run dev:server` | Start backend dev server (Node --watch) |
 | `npm run build:client` | Build frontend for production |
+| `npm run db:migrate` | Run pending PostgreSQL database migrations |
+| `npm run db:status` | Check PostgreSQL database migration status |
 | `npm test` | Run server tests (Vitest) |
 | `npm run lint` | Lint both client and server |
 | `npm run lint:fix` | Auto-fix lint issues |

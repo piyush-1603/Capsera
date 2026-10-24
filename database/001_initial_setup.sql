@@ -1,15 +1,14 @@
 -- CAPSERA Database Initialization
 -- File: database/001_initial_setup.sql
--- Description: Creates the capsera_db database if it does not exist and sets UTF-8 encoding.
+-- Description: Creates the capsera_db database in PostgreSQL if it does not already exist.
 --
--- Run this setup script first:
---   mysql -u root -p < database/001_initial_setup.sql
+-- Target DB: PostgreSQL 18.6+ (Postgres.app / local / cloud)
+--
+-- Run this setup command in terminal:
+--   createdb capsera_db
+-- Or via psql:
+--   SELECT 'CREATE DATABASE capsera_db' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'capsera_db')\gexec
 --
 -- NOTE: Application tables are managed via ordered migrations under database/migrations/.
--- Do not add application table definitions here to prevent duplication.
-
-CREATE DATABASE IF NOT EXISTS capsera_db
-  CHARACTER SET utf8mb4
-  COLLATE utf8mb4_unicode_ci;
-
-USE capsera_db;
+-- Run migrations using the project migration runner:
+--   npm run db:migrate

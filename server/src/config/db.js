@@ -1,28 +1,27 @@
-import mysql from 'mysql2/promise';
+import pkg from 'pg';
+const { Pool } = pkg;
 import config from './env.js';
 
 /**
- * MySQL connection pool using mysql2/promise.
+ * PostgreSQL connection pool using pg.
  *
  * The pool is created lazily — calling getPool() for the first time
  * creates the pool. The server can start without a database connection;
- * database-dependent routes will fail clearly if MySQL is unavailable.
+ * database-dependent routes will fail clearly if PostgreSQL is unavailable.
  */
 
 let pool = null;
 
 export const getPool = () => {
   if (!pool) {
-    pool = mysql.createPool({
+    pool = new Pool({
       host: config.db.host,
       port: config.db.port,
       user: config.db.user,
-      password: config.db.password,
+      password: config.db.password || undefined,
       database: config.db.name,
-      waitForConnections: true,
-      connectionLimit: 10,
-      queueLimit: 0,
-      timezone: '+00:00',
+      max: 10,
+      idleTimeoutMillis: 30000,
     });
   }
   return pool;
@@ -34,9 +33,9 @@ export const getPool = () => {
  */
 export const testConnection = async () => {
   try {
-    const connection = await getPool().getConnection();
-    await connection.ping();
-    connection.release();
+    const client = await getPool().connect();
+    await client.query('SELECT 1');
+    client.release();
     return { connected: true };
   } catch (error) {
     return { connected: false, error: error.message };

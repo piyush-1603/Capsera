@@ -9,7 +9,7 @@
 **Primary context:** Ministry of Earth Sciences (MoES) / India Meteorological Department (IMD), Smart Education  
 **Team:** Four members  
 **Target delivery:** 2–4 weeks  
-**Technology:** React + Vite, Node.js + Express, MySQL
+**Technology:** React + Vite, Node.js + Express, PostgreSQL (18.6+)
 
 This PRD is the single source of truth for product scope, behaviour, naming, acceptance criteria, API conventions, and team boundaries. Implementation details may be refined only through an agreed change to this document or a linked technical decision record.
 
@@ -50,7 +50,7 @@ CAPSERA addresses these requirements through a role-based learning lifecycle:
 - Track lesson completion, course progress, and assessment results.
 - Match trainers to subjects/skills using an explainable, deterministic rule.
 - Provide basic admin oversight of users, courses, enrollments, assessments, certificates, and announcements.
-- Deliver an end-to-end demo using a real MySQL database, not only mock data or localStorage.
+- Deliver an end-to-end demo using a real PostgreSQL database, not only mock data or localStorage.
 - Keep ownership and naming consistent across four parallel contributors.
 
 ### 3.2 Success Criteria
@@ -294,7 +294,7 @@ Priority definitions: **P0** = must work for MVP; **P1** = included if core P0 f
 
 ### 8.3 Reliability and Data Integrity
 
-- MySQL is the source of truth for user, course, enrollment, assessment, progress, feedback, and certificate records.
+- PostgreSQL is the source of truth for user, course, enrollment, assessment, progress, feedback, and certificate records.
 - Use foreign keys, unique constraints, and indexes for integrity.
 - Use transactions for assessment submission/scoring and certificate issuance where multiple writes must succeed together.
 - Use consistent UTC timestamps in persistence and ISO 8601 timestamps in API responses.
@@ -305,7 +305,7 @@ Priority definitions: **P0** = must work for MVP; **P1** = included if core P0 f
 - Paginate list endpoints that may grow.
 - Index email, foreign keys, course status/subject, enrollment lookups, attempt history, and dashboard filters as justified by queries.
 - Do not introduce Redis, message queues, microservices, or video transcoding for the MVP without a demonstrated need.
-- Keep uploaded media in file/object storage rather than MySQL.
+- Keep uploaded media in file/object storage rather than PostgreSQL.
 
 ### 8.5 Accessibility and Usability
 
@@ -322,20 +322,20 @@ Priority definitions: **P0** = must work for MVP; **P1** = included if core P0 f
 - **Routing:** React Router.
 - **HTTP client:** Axios or `fetch`; team must standardize on one client.
 - **Backend:** Node.js + Express, JavaScript.
-- **Database:** MySQL 8+ using InnoDB.
-- **SQL access:** `mysql2/promise` with parameterized queries (recommended).
+- **Database:** PostgreSQL 18.6+.
+- **SQL access:** `pg` (node-postgres) with connection pooling and parameterized queries (see DR-002).
 - **Validation:** Use one agreed schema validation library or shared validation helpers.
 - **File storage:** A cloud/object storage provider for deployed uploads; local storage may be used only for development if documented.
 - **Testing:** API integration tests plus frontend critical-flow tests; exact test libraries are a team decision recorded before implementation.
-- **Deployment:** Static frontend hosting plus Node API hosting and managed MySQL, depending on free-tier availability.
+- **Deployment:** Static frontend hosting plus Node API hosting and managed PostgreSQL, depending on free-tier availability.
 
 ### 9.2 Architecture
 
 ```
-Browser (React/Vite) → REST API (Node/Express) → MySQL
+Browser (React/Vite) → REST API (Node/Express) → PostgreSQL
 ```
 
-The browser must not connect directly to MySQL. The API is responsible for authentication, authorization, validation, business rules, database transactions, and response formatting.
+The browser must not connect directly to PostgreSQL. The API is responsible for authentication, authorization, validation, business rules, database transactions, and response formatting.
 
 ### 9.3 Proposed Repository Layout
 
@@ -753,7 +753,7 @@ A feature is "done" only when:
 
 - The team has an initialized Git repository named `capsera`; this document does not assume its current files or branches.
 - The product name is CAPSERA, regardless of the source SIH problem statement's name CAPACITY CONNECT.
-- The selected database is MySQL; this is not a MERN application.
+- The selected database is PostgreSQL (18.6+); this is not a MERN application.
 - The product is a student project inspired by SIH26075, not an official MoES/IMD production deployment.
 - The team has four members and expects a 2–4 week delivery window.
 - No external dataset is required for the MVP; demo courses, skills, users, and questions can be seeded with synthetic data.
@@ -814,7 +814,7 @@ The shared API contract, naming registry, and database model must be updated alo
 
 ## 20. Final MVP Definition
 
-CAPSERA MVP is complete when an approved user can participate in the full learning lifecycle—profile and skills, trainer/course discovery, enrollment, lessons/resources, assessment, persisted results, progress, and eligible certificate—and when trainers/admins can securely manage the corresponding content and view the appropriate reports. The system must use the agreed React/Vite, Express, and MySQL stack, enforce server-side permissions, and be usable on mobile and desktop.
+CAPSERA MVP is complete when an approved user can participate in the full learning lifecycle—profile and skills, trainer/course discovery, enrollment, lessons/resources, assessment, persisted results, progress, and eligible certificate—and when trainers/admins can securely manage the corresponding content and view the appropriate reports. The system must use the agreed React/Vite, Express, and PostgreSQL stack, enforce server-side permissions, and be usable on mobile and desktop.
 
 ---
 

@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Build output
+client/dist/
+server/dist/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Coverage
+coverage/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Uploads (development)
+server/uploads/
+
+# Temporary files
+tmp/
+temp/
+
+# Original PRD document (content preserved in docs/PRD.md)
+CAPSERA_PRD_v1.0.docx

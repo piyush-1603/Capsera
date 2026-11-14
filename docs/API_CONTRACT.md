@@ -552,8 +552,8 @@ Request:
 | `GET /api/v1/announcements` | Public (published & non-expired) / `ADMIN` (`scope=admin`) | **PROPOSED (Member 4):** Pending team approval on category enum, `scope=admin` filter, and pagination DTO |
 | `POST /api/v1/announcements` | `ADMIN` | **PROPOSED (Member 4):** Pending team approval on create payload (`title`, `body`, `category`, `status`, `expiresAt`) |
 | `PATCH /api/v1/announcements/:announcementId` | `ADMIN` | **PROPOSED (Member 4):** Pending team approval on edit/publish/archive payload and terminal `ARCHIVED` transition |
-| `GET /api/v1/admin/dashboard/summary` | `ADMIN` | **UNRESOLVED:** Exact metric keys for users, courses, enrollments, attempts, certificates |
-| `GET /api/v1/admin/dashboard/assessment-performance` | `ADMIN` | **UNRESOLVED:** Pass rate / subject breakdown response structure |
+| `GET /api/v1/admin/dashboard/summary` | `ADMIN` | **PROPOSED (Member 4):** Pending team approval on summary DTO fields and completion rate denominator (`completed / (active + completed) * 100`) |
+| `GET /api/v1/admin/dashboard/assessment-performance` | `ADMIN` | **PROPOSED (Member 4):** Pending team approval on overall/subject DTO fields, `Unspecified` grouping, pass rate denominator, and `null` average convention |
 
 #### GET /api/v1/certificates/me (`TRAINEE`, PROPOSED)
 Returns paginated completion certificates earned by the authenticated `ACTIVE` `TRAINEE` (`PRD` Section 6.7 & `FR-11`). This endpoint is strictly read-only and does not issue certificates on retrieval.
@@ -695,4 +695,92 @@ Updates announcement content (`title`, `body`, `category`, `expiresAt`), publish
 Request: `{ "title"?, "body"?, "category"?, "status"?, "expiresAt"? }` (at least one field required).
 Response `200`: `{ "success": true, "data": { "announcement": { ... } } }`.
 Errors: 400 `VALIDATION_ERROR`, 401 `UNAUTHENTICATED`, 403 `ACCOUNT_PENDING` / `ACCOUNT_REJECTED` / `ACCOUNT_SUSPENDED` / `FORBIDDEN`, 404 `ANNOUNCEMENT_NOT_FOUND`, 409 `CONFLICT`.
+
+#### GET /api/v1/admin/dashboard/summary (`ADMIN`, PROPOSED)
+Returns live database-backed aggregate counts and summary metrics across users, courses, enrollments, assessments, attempts, certificates, and participation (`PRD` Section 6.11 & `FR-14`). Exposes only aggregate counts/rates (never user emails, names, internal IDs, or individual trainee records).
+
+> **PROPOSED (Member 4):** Pending team approval on response structure and enrollment completion rate denominator:
+> - `completionRate = completed / (active + completed) * 100` (rounded to 2 decimal places; `cancelled` excluded from denominator).
+> - When `(active + completed) === 0` (empty or zero eligible denominator), `completionRate` is `0`.
+> - All empty-table counts return `0`.
+
+Response `200`:
+```json
+{
+  "success": true,
+  "data": {
+    "users": {
+      "total": 25,
+      "byRole": { "TRAINEE": 19, "TRAINER": 5, "ADMIN": 1 },
+      "byStatus": { "PENDING": 3, "ACTIVE": 20, "REJECTED": 1, "SUSPENDED": 1 }
+    },
+    "courses": {
+      "total": 8,
+      "byStatus": { "DRAFT": 2, "PUBLISHED": 5, "ARCHIVED": 1 }
+    },
+    "enrollments": {
+      "total": 30,
+      "byStatus": { "ACTIVE": 18, "COMPLETED": 9, "CANCELLED": 3 },
+      "completionRate": 33.33
+    },
+    "assessments": {
+      "total": 10,
+      "byStatus": { "DRAFT": 2, "PUBLISHED": 7, "CLOSED": 1 }
+    },
+    "attempts": {
+      "total": 40,
+      "byStatus": { "IN_PROGRESS": 3, "SUBMITTED": 0, "GRADED": 35, "EXPIRED": 2 },
+      "passedCount": 28
+    },
+    "certificates": {
+      "totalIssued": 9,
+      "validCount": 8,
+      "revokedCount": 1
+    },
+    "participation": {
+      "enrolledTrainees": 21,
+      "attemptingTrainees": 17
+    }
+  }
+}
+```
+Errors: 401 `UNAUTHENTICATED`, 403 `ACCOUNT_PENDING` / `ACCOUNT_REJECTED` / `ACCOUNT_SUSPENDED` / `FORBIDDEN`.
+
+#### GET /api/v1/admin/dashboard/assessment-performance (`ADMIN`, PROPOSED)
+Returns platform-wide overall assessment metrics and a course-subject breakdown grouped by `courses.subject` (`PRD` Section 6.11 & `FR-14`).
+
+> **PROPOSED (Member 4):** Pending team approval on overall/subject DTO conventions:
+> - **Subject grouping:** Uses trimmed `courses.subject`; missing (`NULL`) or blank subjects are grouped as `"Unspecified"`, ordered alphabetically (`bySubject` is `[]` when no courses exist).
+> - **Pass rate denominator:** `passed graded attempts / total graded attempts * 100` (rounded to 2 decimal places); returns `0` when graded attempts denominator is `0`.
+> - **Null average convention:** `averageScorePercentage` computes the average across `GRADED` attempts only (rounded to 2 decimal places) and is `null` when there are zero `GRADED` attempts.
+
+Response `200`:
+```json
+{
+  "success": true,
+  "data": {
+    "overall": {
+      "totalAssessments": 10,
+      "totalAttempts": 40,
+      "gradedAttempts": 35,
+      "passedAttempts": 28,
+      "passRate": 80,
+      "averageScorePercentage": 76.45
+    },
+    "bySubject": [
+      {
+        "subject": "Meteorology",
+        "courseCount": 3,
+        "assessmentCount": 5,
+        "attemptCount": 20,
+        "gradedAttemptCount": 18,
+        "passedAttemptCount": 15,
+        "passRate": 83.33,
+        "averageScorePercentage": 79.12
+      }
+    ]
+  }
+}
+```
+Errors: 401 `UNAUTHENTICATED`, 403 `ACCOUNT_PENDING` / `ACCOUNT_REJECTED` / `ACCOUNT_SUSPENDED` / `FORBIDDEN`.
 

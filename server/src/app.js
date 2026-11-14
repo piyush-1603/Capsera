@@ -10,6 +10,7 @@ import { authenticate } from './middleware/authenticate.js';
 import { requireRole } from './middleware/requireRole.js';
 import authRouter from './modules/auth/auth.routes.js';
 import adminUserRouter from './modules/users/user.routes.js';
+import adminDashboardRouter from './modules/admin/dashboard.routes.js';
 import courseRoutes from './modules/courses/course.routes.js';
 import { lessonRoutes } from './modules/courses/lesson.routes.js';
 import {
@@ -45,6 +46,7 @@ app.use((req, res, next) => {
 const apiRouter = express.Router();
 apiRouter.use('/auth', authRouter);
 apiRouter.use('/admin/users', authenticate, requireRole('ADMIN'), adminUserRouter);
+apiRouter.use('/admin/dashboard', adminDashboardRouter);
 
 /**
  * GET /api/v1/health

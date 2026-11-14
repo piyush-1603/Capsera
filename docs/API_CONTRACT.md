@@ -547,13 +547,79 @@ Request:
 ### 6.5 Certificates, Announcements & Admin Dashboard (Owner: Member 4)
 | Method & Path | Access | Contract Status |
 |---|---|---|
-| `GET /api/v1/certificates/me` | `TRAINEE` | **UNRESOLVED:** Certificate DTO fields & trigger timing (automatic on completion vs on-demand) |
-| `GET /api/v1/certificates/verify/:certificateCode` | Public | **UNRESOLVED:** Minimal public verification fields (privacy-preserving) |
+| `GET /api/v1/certificates/me` | `TRAINEE` | **PROPOSED (Member 4):** Pending team approval on Certificate DTO & Member 2/3 completion hook integration |
+| `GET /api/v1/certificates/verify/:certificateCode` | Public | **PROPOSED (Member 4):** Pending team approval on minimal public verification fields (privacy-preserving) |
 | `GET /api/v1/announcements` | Public (published & non-expired) / `ADMIN` (`scope=admin`) | **PROPOSED (Member 4):** Pending team approval on category enum, `scope=admin` filter, and pagination DTO |
 | `POST /api/v1/announcements` | `ADMIN` | **PROPOSED (Member 4):** Pending team approval on create payload (`title`, `body`, `category`, `status`, `expiresAt`) |
 | `PATCH /api/v1/announcements/:announcementId` | `ADMIN` | **PROPOSED (Member 4):** Pending team approval on edit/publish/archive payload and terminal `ARCHIVED` transition |
 | `GET /api/v1/admin/dashboard/summary` | `ADMIN` | **UNRESOLVED:** Exact metric keys for users, courses, enrollments, attempts, certificates |
 | `GET /api/v1/admin/dashboard/assessment-performance` | `ADMIN` | **UNRESOLVED:** Pass rate / subject breakdown response structure |
+
+#### GET /api/v1/certificates/me (`TRAINEE`, PROPOSED)
+Returns paginated completion certificates earned by the authenticated `ACTIVE` `TRAINEE` (`PRD` Section 6.7 & `FR-11`). This endpoint is strictly read-only and does not issue certificates on retrieval.
+
+> **PROPOSED (Member 4):** Pending team approval on DTO fields, issuance trigger integration (`OPEN-004` / `SCHEMA-M4-02`), and durable issuance audit-log persistence (`OPEN-009` in `docs/DECISIONS.md`). Live automatic certificate issuance remains pending until Member 2 (`PATCH /api/v1/enrollments/:enrollmentId/progress`) and Member 3 (`POST /api/v1/attempts/:attemptId/submit`) invoke the shared transactional helper (`issueCertificateIfEligible`).
+
+Query parameters:
+- `page` (optional, positive integer, default `1`)
+- `pageSize` (optional, integer `1..100`, default `20`)
+
+Response `200`:
+```json
+{
+  "success": true,
+  "data": {
+    "items": [
+      {
+        "id": "1",
+        "traineeId": "25",
+        "courseId": "4",
+        "courseTitle": "Foundations of Cloud Security",
+        "courseSubject": "Security",
+        "certificateCode": "CAP-A1B2-C3D4-E5F6",
+        "issuedAt": "2026-11-14T09:30:00.000Z",
+        "revokedAt": null,
+        "isValid": true,
+        "status": "VALID"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "pageSize": 20,
+      "totalItems": 1,
+      "totalPages": 1
+    }
+  }
+}
+```
+Errors: 400 `VALIDATION_ERROR`, 401 `UNAUTHENTICATED`, 403 `ACCOUNT_PENDING` / `ACCOUNT_REJECTED` / `ACCOUNT_SUSPENDED` / `FORBIDDEN`.
+
+#### GET /api/v1/certificates/verify/:certificateCode (Public, PROPOSED)
+Publicly verifies a certificate code against PostgreSQL without requiring authentication (`PRD` Section 6.7 & 8.2). Never exposes user emails, internal user/certificate/course IDs, or assessment scores.
+
+> **PROPOSED (Member 4):** Pending team approval on minimal public verification fields and revocation status representation (`OPEN-004`). Admin revocation endpoints remain out of scope unless approved.
+
+Path parameter:
+- `certificateCode`: trimmed alphanumeric/hyphen string (`1..64` chars, matched case-insensitively).
+
+Response `200`:
+```json
+{
+  "success": true,
+  "data": {
+    "certificate": {
+      "certificateCode": "CAP-A1B2-C3D4-E5F6",
+      "traineeName": "Asha Verma",
+      "courseTitle": "Foundations of Cloud Security",
+      "issuedAt": "2026-11-14T09:30:00.000Z",
+      "revokedAt": null,
+      "isValid": true,
+      "status": "VALID"
+    }
+  }
+}
+```
+Errors: 400 `VALIDATION_ERROR`, 404 `CERTIFICATE_NOT_FOUND`.
 
 #### GET /api/v1/announcements (Public / `ADMIN`, PROPOSED)
 Returns paginated homepage announcements (`PRD` Section 6.10 & `FR-12`).

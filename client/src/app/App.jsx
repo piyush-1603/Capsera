@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Link, Routes, Route } from 'react-router-dom';
 import { fetchApiHealth } from '../services/apiClient.js';
 import AnnouncementsFeedSection from '../features/announcements/AnnouncementsFeedSection.jsx';
+import VerifyCertificatePage from '../features/certificates/VerifyCertificatePage.jsx';
 
 function FoundationHomePage() {
   const [healthState, setHealthState] = useState({
@@ -66,6 +67,10 @@ function FoundationHomePage() {
             </span>
           )}
         </div>
+
+        <p style={{ marginTop: '0.75rem', marginBottom: 0 }}>
+          <Link to="/certificates/verify">Verify a Completion Certificate</Link>
+        </p>
       </section>
 
       <AnnouncementsFeedSection />
@@ -77,6 +82,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<FoundationHomePage />} />
+      <Route path="/certificates/verify" element={<VerifyCertificatePage />} />
+      <Route path="/certificates/verify/:certificateCode" element={<VerifyCertificatePage />} />
     </Routes>
   );
 }

@@ -47,10 +47,14 @@ export default function LoginPage() {
     setServerError('');
 
     try {
-      await login(form.email, form.password);
+      const authenticated = await login(form.email, form.password);
       // Clear password from local state once login succeeds
       setForm((prev) => ({ ...prev, password: '' }));
-      navigate(from, { replace: true });
+      const destination =
+        authenticated?.user?.role === 'ADMIN'
+          ? '/admin/dashboard'
+          : from;
+      navigate(destination, { replace: true });
     } catch (err) {
       setForm((prev) => ({ ...prev, password: '' }));
       const code = err.code || '';

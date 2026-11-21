@@ -25,8 +25,22 @@ export async function seedAdmin() {
 
   if (existingResult.rows.length > 0) {
     const existing = existingResult.rows[0];
-    console.log(`[seed-admin] Admin account already exists (ID: ${existing.id}, Email: ${existing.email}, Role: ${existing.role}, Status: ${existing.status}). Skipping creation.`);
-    return existing;
+    const passwordHash = await bcrypt.hash(password, env.bcryptCost);
+    const updateResult = await executeQuery(
+      `UPDATE users
+       SET full_name = $1,
+           password_hash = $2,
+           role = 'ADMIN',
+           status = 'ACTIVE',
+           approved_at = COALESCE(approved_at, CURRENT_TIMESTAMP),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3
+       RETURNING id, full_name, email, role, status, created_at`,
+      [fullName, passwordHash, existing.id],
+    );
+    const updated = updateResult.rows[0];
+    console.log(`[seed-admin] Updated ACTIVE ADMIN account: ID=${updated.id}, Email=${updated.email}`);
+    return updated;
   }
 
   const passwordHash = await bcrypt.hash(password, env.bcryptCost);
